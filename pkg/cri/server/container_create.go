@@ -56,11 +56,15 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		return nil, errors.Wrapf(err, "failed to find sandbox id %q", r.GetPodSandboxId())
 	}
 	sandboxID := sandbox.ID
-	s, err := sandbox.Container.Task(ctx, nil)
+	sandboxInstance, err := c.client.LoadSandbox(ctx, sandbox.RuntimeHandler, sandbox.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get sandbox container task")
+		return nil, errors.Wrapf(err, "failed to load sandbox by id {}", sandbox.ID)
 	}
-	sandboxPid := s.Pid()
+	sandboxStatus, err := sandboxInstance.Status(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get sandbox status by id {}", sandbox.ID)
+	}
+	sandboxPid := sandboxStatus.PID
 
 	// Generate unique id and name for the container and reserve the name.
 	// Reserve the container name to avoid concurrent `CreateContainer` request creating
@@ -85,8 +89,10 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	// Create initial internal container metadata.
 	meta := containerstore.Metadata{
-		ID:        id,
-		Name:      name,
+		ID:   id,
+		Name: name,
+		// TODO the sandboxer and runtime may not be one to one map
+		Sandboxer: sandbox.RuntimeHandler,
 		SandboxID: sandboxID,
 		Config:    config,
 	}
@@ -100,12 +106,6 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	containerdImage, err := c.toContainerdImage(ctx, image)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get image from containerd %q", image.ID)
-	}
-
-	// Run container using the same runtime with sandbox.
-	sandboxInfo, err := sandbox.Container.Info(ctx)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get sandbox %q info", sandboxID)
 	}
 
 	// Create container root directory.
@@ -232,15 +232,16 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	containerLabels := buildLabels(config.Labels, image.ImageSpec.Config.Labels, containerKindContainer)
 
-	runtimeOptions, err := getRuntimeOptions(sandboxInfo)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get runtime options")
-	}
 	opts = append(opts,
 		containerd.WithSpec(spec, specOpts...),
-		containerd.WithRuntime(sandboxInfo.Runtime.Name, runtimeOptions),
+		containerd.WithRuntime(sandbox.Runtime.Name, sandbox.Runtime.Options),
 		containerd.WithContainerLabels(containerLabels),
 		containerd.WithContainerExtension(containerMetadataExtension, &meta))
+
+	// this should be set after other opts executed
+	if sandbox.RuntimeHandler != "" && sandbox.ID != "" {
+		opts = append(opts, containerd.WithSandbox(sandbox.RuntimeHandler, sandbox.ID, sandbox.Address))
+	}
 	var cntr containerd.Container
 	if cntr, err = c.client.NewContainer(ctx, id, opts...); err != nil {
 		return nil, errors.Wrap(err, "failed to create containerd container")

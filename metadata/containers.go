@@ -351,6 +351,10 @@ func readContainer(container *containers.Container, bkt *bolt.Bucket) error {
 			container.SnapshotKey = string(v)
 		case string(bucketKeySnapshotter):
 			container.Snapshotter = string(v)
+		case string(bucketKeySandboxKey):
+			container.SandboxKey = string(v)
+		case string(bucketKeySandboxer):
+			container.Sandboxer = string(v)
 		case string(bucketKeyExtensions):
 			extensions, err := boltutil.ReadExtensions(bkt)
 			if err != nil {
@@ -377,6 +381,8 @@ func writeContainer(bkt *bolt.Bucket, container *containers.Container) error {
 		{bucketKeyImage, []byte(container.Image)},
 		{bucketKeySnapshotter, []byte(container.Snapshotter)},
 		{bucketKeySnapshotKey, []byte(container.SnapshotKey)},
+		{bucketKeySandboxer, []byte(container.Sandboxer)},
+		{bucketKeySandboxKey, []byte(container.SandboxKey)},
 	} {
 		if err := bkt.Put(v[0], v[1]); err != nil {
 			return err

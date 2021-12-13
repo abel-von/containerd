@@ -183,6 +183,8 @@ func (l *local) Create(ctx context.Context, r *api.CreateTaskRequest, _ ...grpc.
 		Runtime:        container.Runtime.Name,
 		RuntimeOptions: container.Runtime.Options,
 		TaskOptions:    r.Options,
+		ShimAddress:    container.Labels["task-address"],
+		Bundle:         container.Labels["bundle"],
 	}
 	for _, m := range r.Rootfs {
 		opts.Rootfs = append(opts.Rootfs, mount.Mount{

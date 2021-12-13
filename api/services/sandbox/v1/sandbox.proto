@@ -1,0 +1,256 @@
+/*
+	Copyright The containerd Authors.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+		http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+syntax = "proto3";
+
+package sandbox;
+
+import weak "gogoproto/gogo.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "github.com/containerd/containerd/api/types/mount.proto";
+
+option go_package = "github.com/containerd/containerd/api/services/sandbox/v1;sandbox";
+
+message Sandbox {
+	string id = 1;
+	google.protobuf.Any spec = 2;
+	repeated Container containers = 3 [(gogoproto.nullable) = false];
+	string task_address = 4;
+	map<string, string> labels  = 5 [(gogoproto.nullable) = false];
+	google.protobuf.Timestamp created_at = 6 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+	google.protobuf.Timestamp updated_at = 7 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+	map<string, google.protobuf.Any> extensions = 8 [(gogoproto.nullable) = false];
+}
+
+message Container {
+	string id = 1;
+	google.protobuf.Any spec = 2;
+	repeated containerd.types.Mount rootfs = 3 [(gogoproto.nullable) = false];
+	IO io = 4;
+	repeated Process processes = 5 [(gogoproto.nullable) = false];
+	string bundle = 6;
+	map<string, string> labels  = 7 [(gogoproto.nullable) = false];
+	map<string, google.protobuf.Any> extensions = 8 [(gogoproto.nullable) = false];
+}
+
+message IO {
+	string stdin = 1;
+	string stdout = 2;
+	string stderr = 3;
+	bool terminal = 4;
+}
+
+message Process {
+	string id = 1;
+	IO io = 2;
+	google.protobuf.Any process = 3;
+	map<string, google.protobuf.Any> extra = 4 [(gogoproto.nullable) = false];
+}
+
+message Status {
+	string id = 1;
+	uint32 pid = 2;
+	string state = 3;
+	string version = 4;
+	map<string, google.protobuf.Any> extra = 5 [(gogoproto.nullable) = false];
+}
+
+service Controller {
+	rpc Start (ControllerStartRequest) returns (ControllerStartResponse);
+	rpc Shutdown (ControllerShutdownRequest) returns (google.protobuf.Empty);
+	rpc Pause (ControllerPauseRequest) returns (google.protobuf.Empty);
+	rpc Resume (ControllerResumeRequest) returns (google.protobuf.Empty);
+	rpc Update (ControllerUpdateRequest) returns (ControllerUpdateResponse);
+	rpc AppendContainer (ControllerAppendContainerRequest) returns (ControllerAppendContainerResponse);
+	rpc UpdateContainer (ControllerUpdateContainerRequest) returns (ControllerUpdateContainerResponse);
+	rpc RemoveContainer (ControllerRemoveContainerRequest) returns (google.protobuf.Empty);
+	rpc Status (ControllerStatusRequest) returns (ControllerStatusResponse);
+	rpc Ping (ControllerPingRequest) returns (google.protobuf.Empty);
+}
+
+message ControllerStartRequest {
+	Sandbox sandbox = 1;
+}
+
+message ControllerStartResponse {
+	Sandbox sandbox = 1;
+}
+
+message ControllerShutdownRequest {
+	string id = 1;
+}
+
+message ControllerPauseRequest {
+	string sandbox_id = 1;
+}
+
+message ControllerResumeRequest {
+	string sandbox_id = 1;
+}
+
+message ControllerUpdateRequest {
+	Sandbox sandbox = 1;
+}
+
+message ControllerUpdateResponse {
+	Sandbox sandbox = 1;
+}
+
+message ControllerAppendContainerRequest {
+	string sandbox_id = 1;
+	Container container = 2;
+}
+
+message ControllerAppendContainerResponse {
+	Container container = 1;
+}
+
+message ControllerUpdateContainerRequest {
+	string sandbox_id = 1;
+	Container container = 2;
+}
+
+message ControllerUpdateContainerResponse {
+	Container container = 1;
+}
+
+message ControllerRemoveContainerRequest {
+	string sandbox_id = 1;
+	string container_id = 2;
+}
+
+message ControllerPingRequest {
+	string sandbox_id = 1;
+}
+
+message ControllerStatusRequest {
+	string id = 1;
+}
+
+message ControllerStatusResponse {
+	Status status = 1;
+}
+
+message ControllerDeleteRequest {
+	string id = 1;
+}
+
+// Sandboxer is the containerd grpc api to manage the metadata and lifecycles of sandboxes.
+service Sandboxer {
+	// Create create a new sandbox, as there is only "Create" and "Delete" in sandbox lifecycle,
+	// after creation, the sandbox should be running.
+	rpc Create (CreateSandboxRequest) returns (CreateSandboxResponse);
+	// Update update a sandbox metadata, it only updates spec/labels/extensions of this sandbox.
+	rpc Update (UpdateSandboxRequest) returns (UpdateSandboxResponse);
+	// AppendContainer append a new container to a sandbox, all the resources like cpu/mem/devices/mounts,
+	// will be attached to the sandbox.
+	rpc AppendContainer (AppendContainerRequest) returns (AppendContainerResponse);
+	// UpdateContainer update a container in a sandbox, the resources belongs to the container maybe changed.
+	// for example, the k8s update container cpu/mem limit of a container, sandbox should be aware of it,
+	// and adjust the resources it is managing. another case of calling UpdateContainer is when
+	// execing a process in a container, the io pipes should be attached to the sandbox.
+	rpc UpdateContainer (UpdateContainerRequest) returns (UpdateContainerResponse);
+	// RemoveContainer removes all resources belongs to a container in a sandbox.
+	rpc RemoveContainer (RemoveContainerRequest) returns (google.protobuf.Empty);
+	// Delete delete a sandbox, there is no Stop API in sandboxer, so delete a sandbox also stopped it.
+	// not only metadata deleted from db, but the running sandbox should be stopped, and all resources should be released.
+	rpc Delete (DeleteSandboxRequest) returns (google.protobuf.Empty);
+	// List list all sandboxes belongs to a specific sandboxer.
+	rpc List (ListSandboxRequest) returns (ListSandboxResponse);
+	// Get gets a sandbox metadata from db.
+	rpc Get (GetSandboxRequest) returns (GetSandboxResponse);
+	// Status query the status of a sandbox, check if it is running or stopped of paused .etc.
+	rpc Status (StatusRequest) returns (StatusResponse);
+}
+
+message CreateSandboxRequest {
+	string name = 1;
+	Sandbox sandbox = 2;
+}
+
+message CreateSandboxResponse {
+	Sandbox sandbox = 1;
+}
+
+message UpdateSandboxRequest {
+	string name = 1;
+	Sandbox sandbox = 2;
+	repeated string fields = 3;
+}
+
+message UpdateSandboxResponse {
+	Sandbox sandbox = 1;
+}
+
+message AppendContainerRequest {
+	string name = 1;
+	string sandbox_id = 2;
+	Container container = 3;
+}
+
+message AppendContainerResponse {
+	Container container = 1;
+}
+
+message UpdateContainerRequest {
+	string name = 1;
+	string sandbox_id = 2;
+	Container container = 3;
+}
+
+message UpdateContainerResponse {
+	Container container = 1;
+}
+
+message RemoveContainerRequest {
+	string name = 1;
+	string sandbox_id = 2;
+	string container_id = 3;
+}
+
+message GetSandboxRequest {
+	string name = 1;
+	string id = 2;
+}
+
+message GetSandboxResponse {
+	Sandbox sandbox = 1;
+}
+
+message ListSandboxRequest {
+	string name = 1;
+	repeated string filters = 2;
+}
+
+message ListSandboxResponse {
+	repeated Sandbox list = 1 [(gogoproto.nullable) = false];
+}
+
+message StatusRequest {
+	string name = 1;
+	string id = 2;
+}
+
+message StatusResponse {
+	Status status = 1;
+}
+
+message DeleteSandboxRequest {
+	string name = 1;
+	string id = 2;
+}

@@ -68,6 +68,10 @@ type Container struct {
 	// This field is not required but immutable.
 	Snapshotter string
 
+	Sandboxer string
+
+	SandboxKey string
+
 	// CreatedAt is the time at which the container was created.
 	CreatedAt time.Time
 

@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/sandbox"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/containerd/snapshots"
 )
@@ -43,6 +44,7 @@ type services struct {
 	eventService         EventService
 	leasesService        leases.Manager
 	introspectionService introspection.Service
+	sandboxers           map[string]sandbox.Sandboxer
 }
 
 // ServicesOpt allows callers to set options on the services
@@ -68,6 +70,16 @@ func WithSnapshotters(snapshotters map[string]snapshots.Snapshotter) ServicesOpt
 		s.snapshotters = make(map[string]snapshots.Snapshotter)
 		for n, sn := range snapshotters {
 			s.snapshotters[n] = sn
+		}
+	}
+}
+
+// WithSandboxers sets the sandboxers.
+func WithSandboxers(sandboxers map[string]sandbox.Sandboxer) ServicesOpt {
+	return func(s *services) {
+		s.sandboxers = make(map[string]sandbox.Sandboxer)
+		for n, sn := range sandboxers {
+			s.sandboxers[n] = sn
 		}
 	}
 }

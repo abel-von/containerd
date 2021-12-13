@@ -18,6 +18,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/containerd/containerd/cmd/ctr/commands/sandboxes"
 	"io/ioutil"
 
 	"github.com/containerd/containerd/cmd/ctr/commands/containers"
@@ -114,6 +115,7 @@ containerd CLI
 		tasks.Command,
 		install.Command,
 		ociCmd.Command,
+		sandboxes.Command,
 	}, extraCmds...)
 	app.Before = func(context *cli.Context) error {
 		if context.GlobalBool("debug") {

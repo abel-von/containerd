@@ -175,6 +175,13 @@ func WithSnapshotter(name string) NewContainerOpts {
 	}
 }
 
+func WithSandboxer(name string) NewContainerOpts {
+	return func(ctx context.Context, client *Client, c *containers.Container) error {
+		c.Sandboxer = name
+		return nil
+	}
+}
+
 // WithSnapshot uses an existing root filesystem for the container
 func WithSnapshot(id string) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
@@ -219,6 +226,16 @@ func WithNewSnapshot(id string, i Image, opts ...snapshots.Opt) NewContainerOpts
 		}
 		c.SnapshotKey = id
 		c.Image = i.Name()
+		return nil
+	}
+}
+
+func WithSandbox(sandboxer, sandboxId, sandboxAddress string) NewContainerOpts {
+	return func(ctx context.Context, client *Client, c *containers.Container) error {
+		c.SandboxKey = sandboxId
+		c.Sandboxer = sandboxer
+		// TODO if this should be a formal field of container?
+		c.Labels["task-address"] = sandboxAddress
 		return nil
 	}
 }

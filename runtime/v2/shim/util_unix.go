@@ -25,10 +25,12 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/mdlayher/vsock"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/dialer"
 	"github.com/containerd/containerd/sys"
@@ -76,6 +78,22 @@ func SocketAddress(ctx context.Context, socketPath, id string) (string, error) {
 
 // AnonDialer returns a dialer for a socket
 func AnonDialer(address string, timeout time.Duration) (net.Conn, error) {
+	if strings.HasPrefix(address, "vsock://") {
+		address = strings.TrimPrefix(address, "vsock://")
+		cxport := strings.Split(address, ":")
+		if len(cxport) != 2 {
+			return nil, fmt.Errorf("invalid vsock address %s", address)
+		}
+		contextID, err := strconv.ParseUint(cxport[0], 10, 0)
+		if err != nil {
+			return nil, err
+		}
+		port, err := strconv.ParseUint(cxport[1], 10, 0)
+		if err != nil {
+			return nil, err
+		}
+		return vsock.Dial(uint32(contextID), uint32(port))
+	}
 	return dialer.Dialer(socket(address).path(), timeout)
 }
 

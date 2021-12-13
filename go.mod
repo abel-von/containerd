@@ -35,6 +35,7 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.12
 	github.com/klauspost/compress v1.11.13
+	github.com/mdlayher/vsock v0.0.0-20210303205602-10d591861736
 	github.com/moby/locker v1.0.1
 	github.com/moby/sys/mountinfo v0.4.1
 	github.com/moby/sys/symlink v0.1.0
@@ -77,5 +78,5 @@ replace (
 	// urfave/cli must be <= v1.22.1 due to a regression: https://github.com/urfave/cli/issues/1092
 	github.com/urfave/cli => github.com/urfave/cli v1.22.1
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
-	google.golang.org/grpc => google.golang.org/grpc v1.27.1
+	google.golang.org/grpc => google.golang.org/grpc v1.31.1
 )

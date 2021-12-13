@@ -36,4 +36,5 @@ const (
 	DefaultRuntime = "io.containerd.runc.v2"
 	// DefaultConfigDir is the default location for config files.
 	DefaultConfigDir = "/etc/containerd"
+	DefaultSandboxer = "runc"
 )

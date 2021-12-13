@@ -20,8 +20,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
@@ -34,6 +36,9 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime"
+	client "github.com/containerd/containerd/runtime/v2/shim"
+	"github.com/containerd/containerd/runtime/v2/task"
+	"github.com/containerd/ttrpc"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -119,6 +124,76 @@ func (m *TaskManager) ID() string {
 
 // Create a new task
 func (m *TaskManager) Create(ctx context.Context, id string, opts runtime.CreateOpts) (_ runtime.Task, retErr error) {
+	ns, err := namespaces.NamespaceRequired(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if opts.ShimAddress != "" {
+		log.G(ctx).Infof("start task in sandbox address %s, bundle: %s", opts.ShimAddress, opts.Bundle)
+
+		bundle := &Bundle{
+			ID:        id,
+			Path:      opts.Bundle,
+			Namespace: ns,
+		}
+
+		address := opts.ShimAddress
+		log.G(ctx).Infof("connect to shimv2 server in sandbox with address %s", address)
+		var conn net.Conn
+		var e error
+		for i := 0; i < 5; i++ {
+			conn, e = client.Connect(address, client.AnonDialer)
+			if e != nil {
+				time.Sleep(1 * time.Second)
+			} else {
+				break
+			}
+		}
+		if e != nil {
+			return nil, e
+		}
+
+		log.G(ctx).Infof("succeed establish the connection to %s, new ttrpc client", address)
+		c := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() {
+			log.G(ctx).WithField("id", id).Info("shim disconnected")
+			_, err := m.tasks.Get(ctx, id)
+			if err != nil {
+				return
+			}
+			if err := bundle.Delete(); err != nil {
+				log.G(ctx).WithField("id", id).Errorf("failed to delete bundle")
+			}
+			m.tasks.Delete(ctx, id)
+		}))
+		shim := &shim{
+			bundle:  bundle,
+			client:  c,
+			task:    task.NewTaskClient(c),
+			events:  m.events,
+			rtTasks: m.tasks,
+		}
+		defer func() {
+			if err != nil {
+				dctx, cancel := timeout.WithContext(context.Background(), cleanupTimeout)
+				defer cancel()
+				_, errShim := shim.Delete(dctx)
+				if errShim != nil {
+					shim.Shutdown(ctx)
+					shim.Close()
+				}
+			}
+		}()
+		t, err := shim.Create(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		err = m.tasks.Add(ctx, t)
+		if err != nil {
+			return nil, err
+		}
+		return t, nil
+	}
+
 	bundle, err := NewBundle(ctx, m.root, m.state, id, opts.Spec.Value)
 	if err != nil {
 		return nil, err

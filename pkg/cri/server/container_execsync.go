@@ -166,6 +166,9 @@ func (c *criService) execInternal(ctx context.Context, container containerd.Cont
 		exitRes := <-exitCh
 		log.G(ctx).Debugf("Timeout received while waiting for exec process kill %q code %d and error %v",
 			execID, exitRes.ExitCode(), exitRes.Error())
+		// TODO how to handle the io close in sandboxer? maybe we should wait io done in the Wait of shim task,
+		// and close the io in Wait() of process
+		execIO.Close()
 		<-attachDone
 		log.G(ctx).Debugf("Stream pipe for exec process %q done", execID)
 		return nil, errors.Wrapf(execCtx.Err(), "timeout %v exceeded", opts.timeout)
@@ -175,6 +178,7 @@ func (c *criService) execInternal(ctx context.Context, container containerd.Cont
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed while waiting for exec %q", execID)
 		}
+		execIO.Close()
 		<-attachDone
 		log.G(ctx).Debugf("Stream pipe for exec process %q done", execID)
 		return &code, nil

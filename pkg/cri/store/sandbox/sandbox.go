@@ -17,13 +17,14 @@
 package sandbox
 
 import (
+	"github.com/containerd/containerd/containers"
 	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cri/store"
 	"github.com/containerd/containerd/pkg/cri/store/label"
 	"github.com/containerd/containerd/pkg/cri/store/truncindex"
-
-	"github.com/containerd/containerd/pkg/cri/store"
 	"github.com/containerd/containerd/pkg/netns"
 )
 
@@ -34,8 +35,15 @@ type Sandbox struct {
 	Metadata
 	// Status stores the status of the sandbox.
 	Status StatusStorage
+	// TODO remove this field
 	// Container is the containerd sandbox container client.
 	Container containerd.Container
+
+	Spec *oci.Spec
+
+	Address string
+
+	Runtime containers.RuntimeInfo
 	// CNI network namespace client.
 	// For hostnetwork pod, this is always nil;
 	// For non hostnetwork pod, this should never be nil.

@@ -40,12 +40,14 @@ func containerToProto(container *containers.Container) api.Container {
 			Name:    container.Runtime.Name,
 			Options: container.Runtime.Options,
 		},
-		Spec:        container.Spec,
-		Snapshotter: container.Snapshotter,
-		SnapshotKey: container.SnapshotKey,
-		CreatedAt:   container.CreatedAt,
-		UpdatedAt:   container.UpdatedAt,
-		Extensions:  container.Extensions,
+		Spec:           container.Spec,
+		Snapshotter:    container.Snapshotter,
+		SnapshotKey:    container.SnapshotKey,
+		CreatedAt:      container.CreatedAt,
+		UpdatedAt:      container.UpdatedAt,
+		Extensions:     container.Extensions,
+		Sandboxer:      container.Sandboxer,
+		SandboxKey:     container.SandboxKey,
 	}
 }
 
@@ -58,13 +60,15 @@ func containerFromProto(containerpb *api.Container) containers.Container {
 		}
 	}
 	return containers.Container{
-		ID:          containerpb.ID,
-		Labels:      containerpb.Labels,
-		Image:       containerpb.Image,
-		Runtime:     runtime,
-		Spec:        containerpb.Spec,
-		Snapshotter: containerpb.Snapshotter,
-		SnapshotKey: containerpb.SnapshotKey,
-		Extensions:  containerpb.Extensions,
+		ID:             containerpb.ID,
+		Labels:         containerpb.Labels,
+		Image:          containerpb.Image,
+		Runtime:        runtime,
+		Spec:           containerpb.Spec,
+		Snapshotter:    containerpb.Snapshotter,
+		SnapshotKey:    containerpb.SnapshotKey,
+		Sandboxer:      containerpb.Sandboxer,
+		SandboxKey:     containerpb.SandboxKey,
+		Extensions:     containerpb.Extensions,
 	}
 }

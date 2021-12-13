@@ -155,6 +155,12 @@ func (c *criService) stopContainer(ctx context.Context, container containerstore
 			// Container stopped on first signal no need for SIGKILL
 			return nil
 		}
+		if container.SandboxID != "" && container.Sandboxer != "" {
+			sandboxer := c.client.SandboxService(container.Sandboxer)
+			if err := sandboxer.RemoveContainer(ctx, container.SandboxID, container.ID); err != nil {
+				return err
+			}
+		}
 		// If the parent context was cancelled or exceeded return immediately
 		if ctx.Err() != nil {
 			return ctx.Err()

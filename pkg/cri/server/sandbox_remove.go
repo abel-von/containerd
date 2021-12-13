@@ -17,7 +17,6 @@
 package server
 
 import (
-	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
 	"github.com/pkg/errors"
@@ -65,22 +64,6 @@ func (c *criService) RemovePodSandbox(ctx context.Context, r *runtime.RemovePodS
 		}
 	}
 
-	// Remove all containers inside the sandbox.
-	// NOTE(random-liu): container could still be created after this point, Kubelet should
-	// not rely on this behavior.
-	// TODO(random-liu): Introduce an intermediate state to avoid container creation after
-	// this point.
-	cntrs := c.containerStore.List()
-	for _, cntr := range cntrs {
-		if cntr.SandboxID != id {
-			continue
-		}
-		_, err = c.RemoveContainer(ctx, &runtime.RemoveContainerRequest{ContainerId: cntr.ID})
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to remove container %q", cntr.ID)
-		}
-	}
-
 	// Cleanup the sandbox root directories.
 	sandboxRootDir := c.getSandboxRootDir(id)
 	if err := ensureRemoveAll(ctx, sandboxRootDir); err != nil {
@@ -92,15 +75,15 @@ func (c *criService) RemovePodSandbox(ctx context.Context, r *runtime.RemovePodS
 		return nil, errors.Wrapf(err, "failed to remove volatile sandbox root directory %q",
 			volatileSandboxRootDir)
 	}
-
-	// Delete sandbox container.
-	if err := sandbox.Container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
-		if !errdefs.IsNotFound(err) {
-			return nil, errors.Wrapf(err, "failed to delete sandbox container %q", id)
-		}
-		log.G(ctx).Tracef("Remove called for sandbox container %q that does not exist", id)
+	sandboxInstance, err := c.client.LoadSandbox(ctx, sandbox.RuntimeHandler, sandbox.ID)
+	if err != nil && !errdefs.IsNotFound(err) {
+		return nil, errors.Wrapf(err, "failed to load sandbox by id %q", sandbox.ID)
 	}
-
+	if sandboxInstance != nil {
+		if err := sandboxInstance.Delete(ctx); err != nil && !errdefs.IsNotFound(err) {
+			return nil, errors.Wrapf(err, "failed to delete sandbox by id %q", sandbox.ID)
+		}
+	}
 	// Remove sandbox from sandbox store. Note that once the sandbox is successfully
 	// deleted:
 	// 1) ListPodSandbox will not include this sandbox.

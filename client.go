@@ -36,6 +36,7 @@ import (
 	introspectionapi "github.com/containerd/containerd/api/services/introspection/v1"
 	leasesapi "github.com/containerd/containerd/api/services/leases/v1"
 	namespacesapi "github.com/containerd/containerd/api/services/namespaces/v1"
+	sandboxapi "github.com/containerd/containerd/api/services/sandbox/v1"
 	snapshotsapi "github.com/containerd/containerd/api/services/snapshots/v1"
 	"github.com/containerd/containerd/api/services/tasks/v1"
 	versionservice "github.com/containerd/containerd/api/services/version/v1"
@@ -55,6 +56,8 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/sandbox"
+	sbproxy "github.com/containerd/containerd/sandbox/proxy"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/containerd/snapshots"
 	snproxy "github.com/containerd/containerd/snapshots/proxy"
@@ -620,6 +623,16 @@ func (c *Client) SnapshotService(snapshotterName string) snapshots.Snapshotter {
 	c.connMu.Lock()
 	defer c.connMu.Unlock()
 	return snproxy.NewSnapshotter(snapshotsapi.NewSnapshotsClient(c.conn), snapshotterName)
+}
+
+// SandboxService returns the underlying sandbox service for the provided proxy plugin name
+func (c *Client) SandboxService(name string) sandbox.Sandboxer {
+	c.connMu.Lock()
+	defer c.connMu.Unlock()
+	if c.sandboxers != nil {
+		return c.sandboxers[name]
+	}
+	return sbproxy.NewSandboxer(sandboxapi.NewSandboxerClient(c.conn), name)
 }
 
 // TaskService returns the underlying TasksClient

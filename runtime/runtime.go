@@ -47,7 +47,9 @@ type CreateOpts struct {
 	// TaskOptions received for the task
 	TaskOptions *types.Any
 	// Runtime to use
-	Runtime string
+	Runtime     string
+	ShimAddress string
+	Bundle      string
 }
 
 // Exit information for a process

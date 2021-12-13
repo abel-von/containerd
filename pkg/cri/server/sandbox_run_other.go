@@ -31,7 +31,7 @@ func (c *criService) sandboxContainerSpec(id string, config *runtime.PodSandboxC
 	return c.runtimeSpec(id, "")
 }
 
-// sandboxContainerSpecOpts generates OCI spec options for
+// sandboxSpecOpts generates OCI spec options for
 // the sandbox container.
 func (c *criService) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil

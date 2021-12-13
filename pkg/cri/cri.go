@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/containerd/sandbox"
 	"github.com/containerd/containerd/services"
 	"github.com/containerd/containerd/snapshots"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -149,6 +150,9 @@ func getServicesOpts(ic *plugin.InitContext) ([]containerd.ServicesOpt, error) {
 		},
 		services.IntrospectionService: func(s interface{}) containerd.ServicesOpt {
 			return containerd.WithIntrospectionService(s.(introspectionapi.IntrospectionClient))
+		},
+		services.SandboxService: func(s interface{}) containerd.ServicesOpt {
+			return containerd.WithSandboxers(s.(map[string]sandbox.Sandboxer))
 		},
 	} {
 		p := plugins[s]

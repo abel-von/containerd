@@ -20,8 +20,6 @@ import (
 	"encoding/json"
 	goruntime "runtime"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
 	cni "github.com/containerd/go-cni"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -144,26 +142,10 @@ type SandboxInfo struct {
 
 // toCRISandboxInfo converts internal container object information to CRI sandbox status response info map.
 func toCRISandboxInfo(ctx context.Context, sandbox sandboxstore.Sandbox) (map[string]string, error) {
-	container := sandbox.Container
-	task, err := container.Task(ctx, nil)
-	if err != nil && !errdefs.IsNotFound(err) {
-		return nil, errors.Wrap(err, "failed to get sandbox container task")
-	}
-
-	var processStatus containerd.ProcessStatus
-	if task != nil {
-		taskStatus, err := task.Status(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get task status")
-		}
-
-		processStatus = taskStatus.Status
-	}
-
 	si := &SandboxInfo{
 		Pid:            sandbox.Status.Get().Pid,
 		RuntimeHandler: sandbox.RuntimeHandler,
-		Status:         string(processStatus),
+		Status:         sandbox.Status.Get().State.String(),
 		Config:         sandbox.Config,
 		CNIResult:      sandbox.CNIResult,
 	}
@@ -182,30 +164,6 @@ func toCRISandboxInfo(ctx context.Context, sandbox sandboxstore.Sandbox) (map[st
 		}
 		si.NetNSClosed = closed
 	}
-
-	spec, err := container.Spec(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get sandbox container runtime spec")
-	}
-	si.RuntimeSpec = spec
-
-	ctrInfo, err := container.Info(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get sandbox container info")
-	}
-	// Do not use config.SandboxImage because the configuration might
-	// be changed during restart. It may not reflect the actual image
-	// used by the sandbox container.
-	si.Image = ctrInfo.Image
-	si.SnapshotKey = ctrInfo.SnapshotKey
-	si.Snapshotter = ctrInfo.Snapshotter
-
-	runtimeOptions, err := getRuntimeOptions(ctrInfo)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get runtime options")
-	}
-	si.RuntimeType = ctrInfo.Runtime.Name
-	si.RuntimeOptions = runtimeOptions
 
 	infoBytes, err := json.Marshal(si)
 	if err != nil {

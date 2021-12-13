@@ -21,6 +21,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/sandbox"
 	"io"
 	goruntime "runtime"
 	"strings"
@@ -346,11 +348,63 @@ func (t *task) Exec(ctx context.Context, id string, spec *specs.Process, ioCreat
 			i.Close()
 		}
 	}()
+
 	any, err := typeurl.MarshalAny(spec)
 	if err != nil {
 		return nil, err
 	}
 	cfg := i.Config()
+	container, err := t.client.ContainerService().Get(ctx, t.id)
+	if err != nil {
+		return nil, err
+	}
+	log.G(ctx).Infof("container %+#v", container)
+	if container.SandboxKey != "" {
+		sandboxer := t.client.SandboxService(container.Sandboxer)
+		sb, err := sandboxer.Get(ctx, container.SandboxKey)
+		if err != nil {
+			return nil, err
+		}
+		var cont sandbox.Container
+		for _, c := range sb.Containers {
+			if c.ID == t.id {
+				cont = c
+			}
+		}
+		cont.Processes = append(cont.Processes, sandbox.Process{
+			Id: id,
+			Io: &sandbox.IO{
+				Stdin:    cfg.Stdin,
+				Stdout:   cfg.Stdout,
+				Stderr:   cfg.Stderr,
+				Terminal: cfg.Terminal,
+			},
+			Process:    any,
+			Extensions: nil,
+		})
+		newCont, err := sandboxer.UpdateContainer(ctx, container.SandboxKey, &cont)
+		if err != nil {
+			return nil, err
+		}
+		var proc sandbox.Process
+		for _, p := range newCont.Processes {
+			if p.Id == id {
+				proc = p
+			}
+		}
+		if proc.Io != nil {
+			cfg = cio.Config{
+				Terminal: proc.Io.Terminal,
+				Stdin:    proc.Io.Stdin,
+				Stdout:   proc.Io.Stdout,
+				Stderr:   proc.Io.Stderr,
+			}
+		}
+		if proc.Process != nil {
+			any = proc.Process
+		}
+	}
+
 	request := &tasks.ExecProcessRequest{
 		ContainerID: t.id,
 		ExecID:      id,

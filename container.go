@@ -19,10 +19,6 @@ package containerd
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/containerd/containerd/api/services/tasks/v1"
 	"github.com/containerd/containerd/api/types"
 	tasktypes "github.com/containerd/containerd/api/types/task"
@@ -30,8 +26,10 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/containerd/sandbox"
 	"github.com/containerd/fifo"
 	"github.com/containerd/typeurl"
 	prototypes "github.com/gogo/protobuf/types"
@@ -39,6 +37,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -262,6 +263,7 @@ func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, opts ...N
 			})
 		}
 	}
+
 	info := TaskInfo{
 		runtime: r.Runtime.Name,
 	}
@@ -286,6 +288,70 @@ func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, opts ...N
 		}
 		request.Options = any
 	}
+
+	if r.SandboxKey != "" {
+		if r.Sandboxer == "" {
+			return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "Sandboxer should be specified with SandboxId")
+		}
+
+		sandboxService := c.client.SandboxService(r.Sandboxer)
+		var rootfs []mount.Mount
+		for _, m := range request.Rootfs {
+			rootMount := mount.Mount{
+				Type:    m.Type,
+				Source:  m.Source,
+				Options: m.Options,
+			}
+			rootfs = append(rootfs, rootMount)
+		}
+		cont := &sandbox.Container{
+			ID:     c.id,
+			Spec:   c.metadata.Spec,
+			Rootfs: rootfs,
+			Io: &sandbox.IO{
+				Stdin:    request.Stdin,
+				Stdout:   request.Stdout,
+				Stderr:   request.Stderr,
+				Terminal: request.Terminal,
+			},
+			Labels:     c.metadata.Labels,
+			Extensions: c.metadata.Extensions,
+		}
+		ac, err := sandboxService.AppendContainer(ctx, r.SandboxKey, cont)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to append container %s to sandbox %s", cont.ID, r.SandboxKey)
+		}
+		err = c.Update(ctx, func(ctx context.Context, client *Client, c *containers.Container) error {
+			c.Spec = ac.Spec
+			c.Labels["bundle"] = ac.Bundle
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		var newRootfs []*types.Mount
+		for _, m := range ac.Rootfs {
+			newRootfs = append(newRootfs, &types.Mount{
+				Type:    m.Type,
+				Source:  m.Source,
+				Options: m.Options,
+			})
+		}
+		request.Rootfs = newRootfs
+		if ac.Io != nil {
+			request.Stdin = ac.Io.Stdin
+			request.Stdout = ac.Io.Stdout
+			request.Stderr = ac.Io.Stderr
+			request.Terminal = ac.Io.Terminal
+		} else {
+			request.Stdin = ""
+			request.Stdout = ""
+			request.Stderr = ""
+			request.Terminal = false
+		}
+
+	}
+
 	t := &task{
 		client: c.client,
 		io:     i,

@@ -24,7 +24,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
-	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	selinux "github.com/opencontainers/selinux/go-selinux"
 	"github.com/pkg/errors"
@@ -36,27 +35,16 @@ import (
 	osinterface "github.com/containerd/containerd/pkg/os"
 )
 
-func (c *criService) sandboxContainerSpec(id string, config *runtime.PodSandboxConfig,
-	imageConfig *imagespec.ImageConfig, nsPath string, runtimePodAnnotations []string) (_ *runtimespec.Spec, retErr error) {
+func (c *criService) sandboxSpec(id string, config *runtime.PodSandboxConfig, nsPath string, runtimePodAnnotations []string) (_ *runtimespec.Spec, retErr error) {
 	// Creates a spec Generator with the default spec.
 	// TODO(random-liu): [P1] Compare the default settings with docker and containerd default.
 	specOpts := []oci.SpecOpts{
 		oci.WithoutRunMount,
 		customopts.WithoutDefaultSecuritySettings,
 		customopts.WithRelativeRoot(relativeRootfsPath),
-		oci.WithEnv(imageConfig.Env),
 		oci.WithRootFSReadonly(),
 		oci.WithHostname(config.GetHostname()),
 	}
-	if imageConfig.WorkingDir != "" {
-		specOpts = append(specOpts, oci.WithProcessCwd(imageConfig.WorkingDir))
-	}
-
-	if len(imageConfig.Entrypoint) == 0 && len(imageConfig.Cmd) == 0 {
-		// Pause image must have entrypoint or cmd.
-		return nil, errors.Errorf("invalid empty entrypoint and cmd in image config %+v", imageConfig)
-	}
-	specOpts = append(specOpts, oci.WithProcessArgs(append(imageConfig.Entrypoint, imageConfig.Cmd...)...))
 
 	// Set cgroups parent.
 	if c.config.DisableCgroup {
@@ -159,12 +147,12 @@ func (c *criService) sandboxContainerSpec(id string, config *runtime.PodSandboxC
 	return c.runtimeSpec(id, "", specOpts...)
 }
 
-// sandboxContainerSpecOpts generates OCI spec options for
+// sandboxSpecOpts generates OCI spec options for
 // the sandbox container.
-func (c *criService) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig) ([]oci.SpecOpts, error) {
+func (c *criService) sandboxSpecOpts(config *runtime.PodSandboxConfig) ([]containerd.SimpleSpecOpts, error) {
 	var (
 		securityContext = config.GetLinux().GetSecurityContext()
-		specOpts        []oci.SpecOpts
+		specOpts        []containerd.SimpleSpecOpts
 		err             error
 	)
 	ssp := securityContext.GetSeccomp()
@@ -184,7 +172,7 @@ func (c *criService) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, 
 		return nil, errors.Wrap(err, "failed to generate seccomp spec opts")
 	}
 	if seccompSpecOpts != nil {
-		specOpts = append(specOpts, seccompSpecOpts)
+		specOpts = append(specOpts, containerd.Simple(seccompSpecOpts))
 	}
 
 	userstr, err := generateUserString(
@@ -195,13 +183,10 @@ func (c *criService) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate user string")
 	}
-	if userstr == "" {
-		// Lastly, since no user override was passed via CRI try to set via OCI
-		// Image
-		userstr = imageConfig.User
-	}
 	if userstr != "" {
-		specOpts = append(specOpts, oci.WithUser(userstr))
+		specOpts = append(specOpts,
+			containerd.Simple(oci.WithUIDGID(uint32(securityContext.GetRunAsUser().GetValue()),
+				uint32(securityContext.GetRunAsGroup().GetValue()))))
 	}
 	return specOpts, nil
 }
