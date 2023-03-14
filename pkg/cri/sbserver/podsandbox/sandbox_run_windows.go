@@ -91,13 +91,3 @@ func (c *Controller) sandboxContainerSpec(id string, config *runtime.PodSandboxC
 func (c *Controller) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig) ([]oci.SpecOpts, error) {
 	return nil, nil
 }
-
-// No sandbox files needed for windows.
-func (c *Controller) setupSandboxFiles(id string, config *runtime.PodSandboxConfig) error {
-	return nil
-}
-
-// No sandbox files needed for windows.
-func (c *Controller) cleanupSandboxFiles(id string, config *runtime.PodSandboxConfig) error {
-	return nil
-}

@@ -96,10 +96,11 @@ service Controller {
 }
 
 message ControllerCreateRequest {
-	string sandbox_id = 1;
-	repeated containerd.types.Mount rootfs = 2;
-	google.protobuf.Any options = 3;
-	string netns_path = 4;
+	string sandboxer = 1;
+	string sandbox_id = 2;
+	repeated containerd.types.Mount rootfs = 3;
+	google.protobuf.Any options = 4;
+	string netns_path = 5;
 }
 
 message ControllerCreateResponse {
@@ -107,7 +108,8 @@ message ControllerCreateResponse {
 }
 
 message ControllerStartRequest {
-	string sandbox_id = 1;
+	string sandboxer = 1;
+	string sandbox_id = 2;
 }
 
 message ControllerStartResponse {
@@ -118,7 +120,8 @@ message ControllerStartResponse {
 }
 
 message ControllerPlatformRequest {
-	string sandbox_id = 1;
+	string sandboxer = 1;
+	string sandbox_id = 2;
 }
 
 message ControllerPlatformResponse {
@@ -126,14 +129,16 @@ message ControllerPlatformResponse {
 }
 
 message ControllerStopRequest {
-	string sandbox_id = 1;
-	uint32 timeout_secs = 2;
+	string sandboxer = 1;
+	string sandbox_id = 2;
+	uint32 timeout_secs = 3;
 }
 
 message ControllerStopResponse {}
 
 message ControllerWaitRequest {
-	string sandbox_id = 1;
+	string sandboxer = 1;
+	string sandbox_id = 2;
 }
 
 message ControllerWaitResponse {
@@ -142,8 +147,9 @@ message ControllerWaitResponse {
 }
 
 message ControllerStatusRequest {
-	string sandbox_id = 1;
-	bool verbose = 2;
+	string sandboxer = 1;
+	string sandbox_id = 2;
+	bool verbose = 3;
 }
 
 message ControllerStatusResponse {
@@ -157,7 +163,8 @@ message ControllerStatusResponse {
 }
 
 message ControllerShutdownRequest {
-	string sandbox_id = 1;
+	string sandboxer = 1;
+	string sandbox_id = 2;
 }
 
 message ControllerShutdownResponse {}

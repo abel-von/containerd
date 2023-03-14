@@ -36,15 +36,3 @@ func (c *Controller) sandboxContainerSpec(id string, config *runtime.PodSandboxC
 func (c *Controller) sandboxContainerSpecOpts(config *runtime.PodSandboxConfig, imageConfig *imagespec.ImageConfig) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil
 }
-
-// setupSandboxFiles sets up necessary sandbox files including /dev/shm, /etc/hosts,
-// /etc/resolv.conf and /etc/hostname.
-func (c *Controller) setupSandboxFiles(id string, config *runtime.PodSandboxConfig) error {
-	return nil
-}
-
-// cleanupSandboxFiles unmount some sandbox files, we rely on the removal of sandbox root directory to
-// remove these files. Unmount should *NOT* return error if the mount point is already unmounted.
-func (c *Controller) cleanupSandboxFiles(id string, config *runtime.PodSandboxConfig) error {
-	return nil
-}

@@ -42,14 +42,10 @@ import (
 const (
 	// defaultSandboxOOMAdj is default omm adj for sandbox container. (kubernetes#47938).
 	defaultSandboxOOMAdj = -998
-	// defaultShmSize is the default size of the sandbox shm.
-	defaultShmSize = int64(1024 * 1024 * 64)
 	// relativeRootfsPath is the rootfs path relative to bundle path.
 	relativeRootfsPath = "rootfs"
 	// devShm is the default path of /dev/shm.
 	devShm = "/dev/shm"
-	// etcHosts is the default path of /etc/hosts file.
-	etcHosts = "/etc/hosts"
 	// resolvConfPath is the abs path of resolv.conf on host or container.
 	resolvConfPath = "/etc/resolv.conf"
 )
@@ -63,16 +59,6 @@ func getCgroupsPath(cgroupsParent, id string) string {
 		return strings.Join([]string{base, "cri-containerd", id}, ":")
 	}
 	return filepath.Join(cgroupsParent, id)
-}
-
-// getSandboxHostname returns the hostname file path inside the sandbox root directory.
-func (c *Controller) getSandboxHostname(id string) string {
-	return filepath.Join(c.getSandboxRootDir(id), "hostname")
-}
-
-// getSandboxHosts returns the hosts file path inside the sandbox root directory.
-func (c *Controller) getSandboxHosts(id string) string {
-	return filepath.Join(c.getSandboxRootDir(id), "hosts")
 }
 
 // getResolvPath returns resolv.conf filepath for specified sandbox.

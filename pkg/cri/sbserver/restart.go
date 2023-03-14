@@ -29,18 +29,16 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	containerdimages "github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
-	criconfig "github.com/containerd/containerd/pkg/cri/config"
-	"github.com/containerd/containerd/pkg/cri/sbserver/podsandbox"
-	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/typeurl/v2"
-	"golang.org/x/sync/errgroup"
-	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
-
 	cio "github.com/containerd/containerd/pkg/cri/io"
+	"github.com/containerd/containerd/pkg/cri/sbserver/podsandbox"
 	containerstore "github.com/containerd/containerd/pkg/cri/store/container"
 	sandboxstore "github.com/containerd/containerd/pkg/cri/store/sandbox"
 	ctrdutil "github.com/containerd/containerd/pkg/cri/util"
 	"github.com/containerd/containerd/pkg/netns"
+	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/typeurl/v2"
+	"golang.org/x/sync/errgroup"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 // NOTE: The recovery logic has following assumption: when the cri plugin is down:
@@ -101,7 +99,7 @@ func (c *criService) recover(ctx context.Context) error {
 
 		var (
 			state      = sandboxstore.StateUnknown
-			controller = c.sandboxControllers[criconfig.ModeShim]
+			controller = c.client.SandboxController(sbx.Sandboxer)
 		)
 
 		status, err := controller.Status(ctx, sbx.ID, false)
@@ -473,7 +471,6 @@ func (c *criService) loadSandbox(ctx context.Context, cntr containerd.Container)
 
 	sandbox = sandboxstore.NewSandbox(*meta, s)
 	sandbox.Container = cntr
-
 	// Load network namespace.
 	sandbox.NetNS = getNetNS(meta)
 

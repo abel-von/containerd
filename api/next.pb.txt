@@ -4785,8 +4785,15 @@ file {
       json_name: "spec"
     }
     field {
-      name: "labels"
+      name: "sandboxer"
       number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "labels"
+      number: 5
       label: LABEL_REPEATED
       type: TYPE_MESSAGE
       type_name: ".containerd.types.Sandbox.LabelsEntry"
@@ -4794,7 +4801,7 @@ file {
     }
     field {
       name: "created_at"
-      number: 5
+      number: 6
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Timestamp"
@@ -4802,7 +4809,7 @@ file {
     }
     field {
       name: "updated_at"
-      number: 6
+      number: 7
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Timestamp"
@@ -4810,7 +4817,7 @@ file {
     }
     field {
       name: "extensions"
-      number: 7
+      number: 8
       label: LABEL_REPEATED
       type: TYPE_MESSAGE
       type_name: ".containerd.types.Sandbox.ExtensionsEntry"
@@ -4998,15 +5005,22 @@ file {
   message_type {
     name: "ControllerCreateRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
     }
     field {
       name: "rootfs"
-      number: 2
+      number: 3
       label: LABEL_REPEATED
       type: TYPE_MESSAGE
       type_name: ".containerd.types.Mount"
@@ -5014,7 +5028,7 @@ file {
     }
     field {
       name: "options"
-      number: 3
+      number: 4
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Any"
@@ -5022,7 +5036,7 @@ file {
     }
     field {
       name: "netns_path"
-      number: 4
+      number: 5
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "netnsPath"
@@ -5041,8 +5055,15 @@ file {
   message_type {
     name: "ControllerStartRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
@@ -5104,8 +5125,15 @@ file {
   message_type {
     name: "ControllerPlatformRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
@@ -5125,15 +5153,22 @@ file {
   message_type {
     name: "ControllerStopRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
     }
     field {
       name: "timeout_secs"
-      number: 2
+      number: 3
       label: LABEL_OPTIONAL
       type: TYPE_UINT32
       json_name: "timeoutSecs"
@@ -5145,8 +5180,15 @@ file {
   message_type {
     name: "ControllerWaitRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
@@ -5173,15 +5215,22 @@ file {
   message_type {
     name: "ControllerStatusRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"
     }
     field {
       name: "verbose"
-      number: 2
+      number: 3
       label: LABEL_OPTIONAL
       type: TYPE_BOOL
       json_name: "verbose"
@@ -5266,8 +5315,15 @@ file {
   message_type {
     name: "ControllerShutdownRequest"
     field {
-      name: "sandbox_id"
+      name: "sandboxer"
       number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sandboxer"
+    }
+    field {
+      name: "sandbox_id"
+      number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "sandboxId"

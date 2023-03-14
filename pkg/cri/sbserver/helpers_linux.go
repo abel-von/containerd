@@ -41,6 +41,8 @@ import (
 const (
 	// devShm is the default path of /dev/shm.
 	devShm = "/dev/shm"
+	// defaultShmSize is the default size of the sandbox shm.
+	defaultShmSize = int64(1024 * 1024 * 64)
 	// etcHosts is the default path of /etc/hosts file.
 	etcHosts = "/etc/hosts"
 	// etcHostname is the default path of /etc/hostname file.
@@ -48,18 +50,6 @@ const (
 	// resolvConfPath is the abs path of resolv.conf on host or container.
 	resolvConfPath = "/etc/resolv.conf"
 )
-
-// getSandboxRootDir returns the root directory for managing sandbox files,
-// e.g. hosts files.
-func (c *criService) getSandboxRootDir(id string) string {
-	return filepath.Join(c.config.RootDir, sandboxesDir, id)
-}
-
-// getVolatileSandboxRootDir returns the root directory for managing volatile sandbox files,
-// e.g. named pipes.
-func (c *criService) getVolatileSandboxRootDir(id string) string {
-	return filepath.Join(c.config.StateDir, sandboxesDir, id)
-}
 
 // getSandboxHostname returns the hostname file path inside the sandbox root directory.
 func (c *criService) getSandboxHostname(id string) string {
