@@ -36,6 +36,7 @@ import (
 
 	csapi "github.com/containerd/containerd/api/services/content/v1"
 	diffapi "github.com/containerd/containerd/api/services/diff/v1"
+	sbapi "github.com/containerd/containerd/api/services/sandbox/v1"
 	ssapi "github.com/containerd/containerd/api/services/snapshots/v1"
 	"github.com/containerd/containerd/content/local"
 	csproxy "github.com/containerd/containerd/content/proxy"
@@ -46,6 +47,7 @@ import (
 	"github.com/containerd/containerd/pkg/timeout"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/plugin"
+	sbproxy "github.com/containerd/containerd/sandbox/proxy"
 	srvconfig "github.com/containerd/containerd/services/server/config"
 	ssproxy "github.com/containerd/containerd/snapshots/proxy"
 	"github.com/containerd/containerd/sys"
@@ -467,6 +469,11 @@ func LoadPlugins(ctx context.Context, config *srvconfig.Config) ([]*plugin.Regis
 			t = plugin.ContentPlugin
 			f = func(conn *grpc.ClientConn) interface{} {
 				return csproxy.NewContentStore(csapi.NewContentClient(conn))
+			}
+		case string(plugin.SandboxControllerPlugin), "sandbox":
+			t = plugin.SandboxControllerPlugin
+			f = func(conn *grpc.ClientConn) interface{} {
+				return sbproxy.NewSandboxController(sbapi.NewControllerClient(conn))
 			}
 		case string(plugin.DiffPlugin), "diff":
 			t = plugin.DiffPlugin

@@ -40,7 +40,7 @@ import (
 func init() {
 	plugin.Register(&plugin.Registration{
 		Type: plugin.SandboxControllerPlugin,
-		ID:   "local",
+		ID:   "shim",
 		Requires: []plugin.Type{
 			plugin.RuntimePluginV2,
 			plugin.EventPlugin,
