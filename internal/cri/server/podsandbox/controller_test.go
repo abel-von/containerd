@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	containerd "github.com/containerd/containerd/v2/client"
 	criconfig "github.com/containerd/containerd/v2/internal/cri/config"
 	"github.com/containerd/containerd/v2/internal/cri/server/podsandbox/types"
 	sandboxstore "github.com/containerd/containerd/v2/internal/cri/store/sandbox"
@@ -75,7 +74,10 @@ func Test_Status(t *testing.T) {
 	assert.Equal(t, s.CreatedAt, createdAt)
 	assert.Equal(t, s.State, sandboxstore.StateReady.String())
 
-	sb.Exit(*containerd.NewExitStatus(exitStatus, exitedAt, nil))
+	if err := sb.Exit(exitStatus, exitedAt); err != nil {
+		t.Fatal(err)
+	}
+
 	exit, err := controller.Wait(context.Background(), sandboxID)
 	if err != nil {
 		t.Fatal(err)
