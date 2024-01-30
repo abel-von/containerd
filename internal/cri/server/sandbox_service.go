@@ -17,9 +17,11 @@
 package server
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
+	"github.com/containerd/platforms"
 
 	"github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/sandbox"
@@ -27,21 +29,91 @@ import (
 )
 
 type criSandboxService struct {
-	cli    *client.Client
-	config *criconfig.Config
+	sandboxers map[string]sandbox.Controller
+	config     *criconfig.Config
 }
 
-func newCriSandboxService(config *criconfig.Config, c *client.Client) *criSandboxService {
+func newCriSandboxService(config *criconfig.Config, sandboxers map[string]sandbox.Controller) *criSandboxService {
 	return &criSandboxService{
-		cli:    c,
-		config: config,
+		sandboxers: sandboxers,
+		config:     config,
 	}
 }
 
-func (c *criSandboxService) SandboxController(config *runtime.PodSandboxConfig, runtimeHandler string) (sandbox.Controller, error) {
-	ociRuntime, err := c.config.GetSandboxRuntime(config, runtimeHandler)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sandbox runtime: %w", err)
+func (c *criSandboxService) SandboxController(sandboxer string) (sandbox.Controller, error) {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return nil, fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
 	}
-	return c.cli.SandboxController(ociRuntime.Sandboxer), nil
+	return sbController, nil
+}
+
+func (c *criSandboxService) CreateSandbox(ctx context.Context, info sandbox.Sandbox, opts ...sandbox.CreateOpt) error {
+	sbController, ok := c.sandboxers[info.Sandboxer]
+	if !ok {
+		return fmt.Errorf("failed to get sandbox controller by %s", info.Sandboxer)
+	}
+	return sbController.Create(ctx, info, opts...)
+}
+
+func (c *criSandboxService) StartSandbox(ctx context.Context, sandboxer string, sandboxID string) (sandbox.ControllerInstance, error) {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return sandbox.ControllerInstance{}, fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+	return sbController.Start(ctx, sandboxID)
+}
+
+func (c *criSandboxService) WaitSandbox(ctx context.Context, sandboxer string, sandboxID string) (<-chan client.ExitStatus, error) {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return nil, fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+
+	ch := make(chan client.ExitStatus, 1)
+	go func() {
+		defer close(ch)
+
+		exitStatus, err := sbController.Wait(ctx, sandboxID)
+		if err != nil {
+			ch <- *client.NewExitStatus(client.UnknownExitStatus, time.Time{}, err)
+			return
+		}
+
+		ch <- *client.NewExitStatus(exitStatus.ExitStatus, exitStatus.ExitedAt, nil)
+	}()
+
+	return ch, nil
+}
+
+func (c *criSandboxService) SandboxStatus(ctx context.Context, sandboxer string, sandboxID string, verbose bool) (sandbox.ControllerStatus, error) {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return sandbox.ControllerStatus{}, fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+	return sbController.Status(ctx, sandboxID, verbose)
+}
+
+func (c *criSandboxService) SandboxPlatform(ctx context.Context, sandboxer string, sandboxID string) (platforms.Platform, error) {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return platforms.Platform{}, fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+	return sbController.Platform(ctx, sandboxID)
+}
+
+func (c *criSandboxService) ShutdownSandbox(ctx context.Context, sandboxer string, sandboxID string) error {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+	return sbController.Shutdown(ctx, sandboxID)
+}
+
+func (c *criSandboxService) StopSandbox(ctx context.Context, sandboxer, sandboxID string, opts ...sandbox.StopOpt) error {
+	sbController, ok := c.sandboxers[sandboxer]
+	if !ok {
+		return fmt.Errorf("failed to get sandbox controller by %s", sandboxer)
+	}
+	return sbController.Stop(ctx, sandboxID, opts...)
 }
