@@ -21,6 +21,8 @@ package containerd.types;
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
+import "github.com/containerd/containerd/api/types/mount.proto";
+
 option go_package = "github.com/containerd/containerd/v2/api/types;types";
 
 // Sandbox represents a sandbox metadata object that keeps all info required by controller to
@@ -51,4 +53,19 @@ message Sandbox {
 	// Sandboxer is the name of the sandbox controller who manages the sandbox.
 	string sandboxer = 10;
 
+}
+
+message TaskResource {
+	string task_id = 1;
+	google.protobuf.Any spec = 2;
+	repeated containerd.types.Mount rootfs = 3;
+	string stdin = 4;
+	string stdout = 5;
+	string stderr = 6;
+}
+
+enum ResourceOp {
+	ADD = 0;
+	REMOVE = 1;
+	UPDATE = 2;
 }
